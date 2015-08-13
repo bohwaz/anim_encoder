@@ -15,7 +15,7 @@ sudo apt-get install pngcrush python-opencv python-numpy python-scipy xrectsel a
 ## Example
 Here's an example snippet that animates `animation.js` at a rate of 15 ms per frame against the first canvas in the DOM. You'll want to plug in your real animation values and URL.
 
-```json
+```javascript
 const myAnimation = require('./animation');
 const animate = require('./animate');
 
