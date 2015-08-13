@@ -1,30 +1,29 @@
 # Animation Encoder
-## Overview
-anim_encoder creates small JavaScript+HTML animations from a series on PNG images.
-This is a modification of that original post, that adds some actual documentation
-cleans up the code base a bit and attempts to make it slightly more reliable. So that
-if anyone actually wants to use this is a project they can get up and running really
-quickly.
 
+## Requirements
 
-Original details are at http://www.sublimetext.com/~jps/animated_gifs_the_hard_way.html
+sudo apt-get install pngcrush python-opencv python-numpy python-scipy xrectsel avconv imagemagick
 
-## Getting Started (Compiling the Example)
-```
-sudo apt-get install pngcrush python-opencv python-numpy python-scipy
-python anim_encoder.py example
-firefox example.html
-```
+## Workflow
 
+1. `./record.rb <animation_name>` to generate a bunch of PNGs in the current directory. When running record, you'll select a rectangle that will be captured by ffmpeg.
+2. Delete, trim, or modify the generated PNGs as necessary.
+3. `./animate.rb <animation_name>` invokes the encoder, which sucks up all the PNGs and outputs two files: a packed PNG file, and a JS file that exports the draw data in order to draw the animation.
+4. Include the JS file in your code and the `animate.js` file in the current directory
+5. Invoke the animate function.
 
-## Capturing your own images
-Images will be saved to capture, you simply need to run capture.py and then go about your task.
-Note you can just delete frames you don't want as you initially set up, should save you some
-time. Then to run the program just go
+## Example
+Here's an example snippet that animates `animation.js` at a rate of 15 ms per frame against the first canvas in the DOM. You'll want to plug in your real animation values and URL.
 
 ```
-python capture.py
-```
+const myAnimation = require('./animation');
+const animate = require('./animate');
 
-If you need to change any settings it should be pretty simple just jump over to config.py
-and edit the configuration options.
+const delayScale = 15;
+
+const img = new Image();
+img.onload = () => {
+  animate(img, delayScale, myAnimation, document.getElementByTag('canvas')[0]);
+};
+img.src = '<url>';
+```

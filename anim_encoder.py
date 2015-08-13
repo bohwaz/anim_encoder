@@ -33,15 +33,16 @@ import os
 import cv2
 from numpy import *
 from time import time
+import progressbar
 
 # How long to wait before the animation restarts
-END_FRAME_PAUSE = 4000
+END_FRAME_PAUSE = 100
 
 # How many pixels can be wasted in the name of combining neighbouring changed
 # regions.
-SIMPLIFICATION_TOLERANCE = 512
+SIMPLIFICATION_TOLERANCE = 256
 
-MAX_PACKED_HEIGHT = 10000
+MAX_PACKED_HEIGHT = 30000
 
 def slice_size(a, b):
     return (a.stop - a.start) * (b.stop - b.start)
@@ -108,7 +109,7 @@ class Allocator2D:
                         self.available_space[row:row+h] -= w
                         self.num_used_rows = max(self.num_used_rows, row + h)
                         return row, col
-        raise RuntimeError()
+        raise RuntimeError('Out of space in packed image.')
 
 def find_matching_rect(bitmap, num_used_rows, packed, src, sx, sy, w, h):
     template = src[sy:sy+h, sx:sx+w]
@@ -127,16 +128,20 @@ def find_matching_rect(bitmap, num_used_rows, packed, src, sx, sy, w, h):
     else:
         return None
 
-def generate_animation(anim_name):
+def generate_animation(anim_name, rough, frame_names):
     frames = []
-    rex = re.compile("screen_([0-9]+).png")
-    for f in os.listdir(anim_name):
+    rex = re.compile("([0-9]+)")
+    for f in frame_names:
         m = re.search(rex, f)
         if m:
-            frames.append((int(m.group(1)), anim_name + "/" + f))
+            frames.append((int(m.group(1)), f))
     frames.sort()
 
+    print "Reading images..."
     images = [misc.imread(f) for t, f in frames]
+    if rough:
+        print "Resizing to quarter size for speed..."
+        images = [misc.imresize(i, 0.25) for i in images]
 
     zero = images[0] - images[0]
     pairs = zip([zero] + images[:-1], images)
@@ -170,7 +175,13 @@ def generate_animation(anim_name):
 
     t0 = time()
 
+    widgets = ['Collapsing: ', progressbar.Percentage(), ' ',
+                progressbar.Bar(marker=progressbar.RotatingMarker()), ' ', progressbar.ETA()]
+    pbar = progressbar.ProgressBar(widgets=widgets, maxval=len(rects_by_size)).start()
+    num = 0
     for size,i,j in rects_by_size:
+        num += 1
+        pbar.update(num)
         src = images[i]
         src_rects = img_areas[i]
 
@@ -191,6 +202,7 @@ def generate_animation(anim_name):
 
             packed[dy:dy+h, dx:dx+w] = src[sy:sy+h, sx:sx+w]
 
+    pbar.finish()
     print anim_name,"packing finished, took:",time() - t0
 
     packed = packed[0:allocator.num_used_rows]
@@ -224,11 +236,12 @@ def generate_animation(anim_name):
 
         timeline.append({'delay': delays[i], 'blit': blitlist})
 
-    f = open(anim_name + '_anim.js', 'wb')
-    f.write(anim_name + "_timeline = ")
-    json.dump(timeline, f)
+    root = { 'w': iw, 'h': ih, 'frames': timeline }
+    f = open(anim_name + '.js', 'wb')
+    f.write("module.exports = ")
+    json.dump(root, f)
     f.close()
 
 
 if __name__ == '__main__':
-    generate_animation(sys.argv[1])
+    generate_animation(sys.argv[1], sys.argv[2] == 'true', sys.argv[3:])
