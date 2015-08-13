@@ -2,7 +2,7 @@
 
 ## Requirements
 
-sudo apt-get install pngcrush python-opencv python-numpy python-scipy xrectsel avconv imagemagick
+`sudo apt-get install pngcrush python-opencv python-numpy python-scipy xrectsel avconv imagemagick`
 
 ## Workflow
 
