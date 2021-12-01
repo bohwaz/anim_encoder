@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (c) 2012, Sublime HQ Pty Ltd
 # All rights reserved.
 
@@ -31,6 +31,7 @@ import re
 import sys
 import os
 import cv2
+import hashlib
 from numpy import *
 from time import time
 import progressbar
@@ -42,7 +43,7 @@ END_FRAME_PAUSE = 100
 # regions.
 SIMPLIFICATION_TOLERANCE = 256
 
-MAX_PACKED_HEIGHT = 30000
+MAX_PACKED_HEIGHT = 20000
 
 def slice_size(a, b):
     return (a.stop - a.start) * (b.stop - b.start)
@@ -66,7 +67,7 @@ def simplify(boxes, tol = 0):
     for a,b in boxes:
         sz1 = slice_size(a, b)
         did_combine = False
-        for i in xrange(len(out)):
+        for i in range(len(out)):
             c,d = out[i]
             cu, cv = combine_slices(a, b, c, d)
             sz2 = slice_size(c, d)
@@ -98,11 +99,11 @@ class Allocator2D:
     def allocate(self, w, h):
         bh, bw = shape(self.bitmap)
 
-        for row in xrange(bh - h + 1):
+        for row in range(bh - h + 1):
             if self.available_space[row] < w:
                 continue
 
-            for col in xrange(bw - w + 1):
+            for col in range(bw - w + 1):
                 if self.bitmap[row, col] == 0:
                     if not self.bitmap[row:row+h,col:col+w].any():
                         self.bitmap[row:row+h,col:col+w] = 1
@@ -128,6 +129,15 @@ def find_matching_rect(bitmap, num_used_rows, packed, src, sx, sy, w, h):
     else:
         return None
 
+def to_native(d):
+    if isinstance(d, dict):
+        return {k: to_native(v) for k, v in d.items()}
+    if isinstance(d, list):
+        return [to_native(i) for i in d]
+    if type(d).__module__ == 'numpy':
+        return to_native(d.tolist())
+    return d
+
 def generate_animation(anim_name, rough, frame_names):
     frames = []
     rex = re.compile("([0-9]+)")
@@ -142,6 +152,25 @@ def generate_animation(anim_name, rough, frame_names):
     if rough:
         print "Resizing to quarter size for speed..."
         images = [misc.imresize(i, 0.25) for i in images]
+
+    last_sha256 = None
+    images = []
+    times = []
+    for t, f in frames:
+        # Duplicate frames results in opencv terminating
+        # the process with a SIGKILL during matchTemplate
+        with open(f, 'rb') as h:
+            sha256 = hashlib.sha256(h.read()).digest()
+        if sha256 == last_sha256:
+            continue
+        last_sha256 = sha256
+
+        im = misc.imread(f)
+        # Remove alpha channel from image
+        if im.shape[2] == 4:
+            im = im[:,:,:3]
+        images.append(im)
+        times.append(t)
 
     zero = images[0] - images[0]
     pairs = zip([zero] + images[:-1], images)
@@ -161,17 +190,17 @@ def generate_animation(anim_name, rough, frame_names):
 
     # Sort the rects to be packed by largest size first, to improve the packing
     rects_by_size = []
-    for i in xrange(len(images)):
+    for i in range(len(images)):
         src_rects = img_areas[i]
 
-        for j in xrange(len(src_rects)):
+        for j in range(len(src_rects)):
             rects_by_size.append((slice_tuple_size(src_rects[j]), i, j))
 
     rects_by_size.sort(reverse = True)
 
     allocs = [[None] * len(src_rects) for src_rects in img_areas]
 
-    print anim_name,"packing, num rects:",len(rects_by_size),"num frames:",len(images)
+    print("%s packing, num rects: %d num frames: %s" % (anim_name, len(rects_by_size),  len(images)))
 
     t0 = time()
 
@@ -212,21 +241,27 @@ def generate_animation(anim_name, rough, frame_names):
     if os.system("pngcrush -q " + anim_name + "_packed_tmp.png " + anim_name + "_packed.png") == 0:
         os.system("rm " + anim_name + "_packed_tmp.png")
     else:
-        print "pngcrush not found, output will not be larger"
+        print("pngcrush not found, unable to reduce filesize")
         os.system("mv " + anim_name + "_packed_tmp.png " + anim_name + "_packed.png")
 
+    # Try to use pngquant since it can significantly reduce filesize for screencasts
+    # that don't include photos or other sources of many different colors
+    if os.system("pngquant -o " + anim_name + "_quant.png " + anim_name + "_packed.png") == 0:
+        os.system("mv " + anim_name + "_quant.png " + anim_name + "_packed.png")
+    else:
+        print("pngquant not found, unable to reduce filesize")
+
     # Generate JSON to represent the data
-    times = [t for t, f in frames]
     delays = (array(times[1:] + [times[-1] + END_FRAME_PAUSE]) - array(times)).tolist()
 
     timeline = []
-    for i in xrange(len(images)):
+    for i in range(len(images)):
         src_rects = img_areas[i]
         dst_rects = allocs[i]
 
         blitlist = []
 
-        for j in xrange(len(src_rects)):
+        for j in range(len(src_rects)):
             a, b = src_rects[j]
             sx, sy = b.start, a.start
             w, h = b.stop - b.start, a.stop - a.start
@@ -240,6 +275,9 @@ def generate_animation(anim_name, rough, frame_names):
     f = open(anim_name + '.js', 'wb')
     f.write("module.exports = ")
     json.dump(root, f)
+#    f = open('%s_anim.js' % anim_name, 'wb')
+#    f.write(("%s_timeline = " % anim_name).encode('utf-8'))
+#    f.write(json.dumps(to_native(timeline)).encode('utf-8'))
     f.close()
 
 
