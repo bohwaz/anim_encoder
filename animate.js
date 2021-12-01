@@ -39,7 +39,7 @@ const requestTimeout = function(fn, delay) {
   return handle;
 };
 
-module.exports = function(packedImage, delayScale, data, canvasElement) {
+window.animate = function(packedImage, delayScale, data, canvasElement) {
   const { w, h, frames } = data;
   canvasElement.width = w;
   canvasElement.height = h;

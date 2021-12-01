@@ -26,7 +26,7 @@
 
 import scipy.ndimage.measurements as me
 import json
-import scipy.misc as misc
+import imageio
 import re
 import sys
 import os
@@ -147,12 +147,6 @@ def generate_animation(anim_name, rough, frame_names):
             frames.append((int(m.group(1)), f))
     frames.sort()
 
-    print "Reading images..."
-    images = [misc.imread(f) for t, f in frames]
-    if rough:
-        print "Resizing to quarter size for speed..."
-        images = [misc.imresize(i, 0.25) for i in images]
-
     last_sha256 = None
     images = []
     times = []
@@ -165,10 +159,14 @@ def generate_animation(anim_name, rough, frame_names):
             continue
         last_sha256 = sha256
 
-        im = misc.imread(f)
+        im = imageio.imread(f)
         # Remove alpha channel from image
         if im.shape[2] == 4:
             im = im[:,:,:3]
+
+        if rough:
+            imageio.imresize(im, 0.25)
+
         images.append(im)
         times.append(t)
 
@@ -232,11 +230,11 @@ def generate_animation(anim_name, rough, frame_names):
             packed[dy:dy+h, dx:dx+w] = src[sy:sy+h, sx:sx+w]
 
     pbar.finish()
-    print anim_name,"packing finished, took:",time() - t0
+    print(anim_name,"packing finished, took:",time() - t0)
 
     packed = packed[0:allocator.num_used_rows]
 
-    misc.imsave(anim_name + "_packed_tmp.png", packed)
+    imageio.imsave(anim_name + "_packed_tmp.png", packed)
     # Don't completely fail if we don't have pngcrush
     if os.system("pngcrush -q " + anim_name + "_packed_tmp.png " + anim_name + "_packed.png") == 0:
         os.system("rm " + anim_name + "_packed_tmp.png")
@@ -272,12 +270,9 @@ def generate_animation(anim_name, rough, frame_names):
         timeline.append({'delay': delays[i], 'blit': blitlist})
 
     root = { 'w': iw, 'h': ih, 'frames': timeline }
-    f = open(anim_name + '.js', 'wb')
-    f.write("module.exports = ")
-    json.dump(root, f)
-#    f = open('%s_anim.js' % anim_name, 'wb')
-#    f.write(("%s_timeline = " % anim_name).encode('utf-8'))
-#    f.write(json.dumps(to_native(timeline)).encode('utf-8'))
+    f = open('%s_anim.js' % anim_name, 'wb')
+    f.write(("%s_timeline = " % anim_name).encode('utf-8'))
+    f.write(json.dumps(to_native(root)).encode('utf-8'))
     f.close()
 
 

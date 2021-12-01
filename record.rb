@@ -13,6 +13,6 @@ if ARGV.length == 0
 end
 
 name = ARGV[0]
-x, y, w, h = `xrectsel '%x %y %w %h'`.strip.split(' ')
-run("avconv -video_size #{w}x#{h} -framerate 15 -f x11grab -i :0.0+#{x},#{y} -crf 0 -preset ultrafast #{name}_%05d.png")
+x, y, w, h = `slop -k -f '%x %y %w %h'`.strip.split(' ')
+run("ffmpeg -video_size #{w}x#{h} -framerate 15 -f x11grab -i :0.0+#{x},#{y} -crf 0 -preset ultrafast #{name}_%05d.png")
 run("mogrify -background white -alpha remove -strip -define png:format=png24 #{name}*.png")

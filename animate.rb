@@ -33,4 +33,6 @@ end
 name = ARGV[0]
 # /bin/sh doesn't do {1,3,5,7,9}* syntax.
 glob = options[:half_frames] ? [1, 3, 5, 7, 9].map { |i| "#{name}*#{i}.png" }.join(' ') : "#{name}*.png"
-run("python anim_encoder.py #{name} #{options[:rough]} #{glob}")
+run("python3 anim_encoder.py #{name} #{options[:rough]} #{glob}")
+
+run("cwebp -m 6 -alpha_q 0 -q 90 -o #{name}_packed.webp #{name}_packed.png")
