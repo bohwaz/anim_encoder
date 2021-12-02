@@ -39,3 +39,7 @@ img.src = '<url>';
 ## Credit
 
 sublimehq for doing the heavy lifting. We just made it easier to use.
+
+## Alternatives
+
+Check out [this Go rewrite from @invrainbow as well](https://github.com/invrainbow/cpcast)!

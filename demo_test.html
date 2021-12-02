@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<script type="text/javascript" src="demo_anim.js"></script>
+<script type="text/javascript" src="animate.js"></script>
+
+<canvas></canvas>
+
+<script type="text/javascript">
+const delayScale = 25;
+
+const img = new Image();
+img.onload = () => {
+  animate(img, delayScale, demo_timeline, document.getElementsByTagName('canvas')[0]);
+};
+img.src = 'demo_packed.webp';
+
+</script>
+
+</body>
+</html>

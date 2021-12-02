@@ -164,8 +164,8 @@ def generate_animation(anim_name, rough, frame_names):
         if im.shape[2] == 4:
             im = im[:,:,:3]
 
-        if rough:
-            imageio.imresize(im, 0.25)
+        #if rough:
+        #   im.resize(im, 0.25)
 
         images.append(im)
         times.append(t)
@@ -275,6 +275,13 @@ def generate_animation(anim_name, rough, frame_names):
     f.write(json.dumps(to_native(root)).encode('utf-8'))
     f.close()
 
+    f = open('template.html', 'r', encoding='utf-8')
+    t = f.read()
+    f.close()
+
+    f = open('%s_test.html' % anim_name, 'w', encoding='utf-8')
+    f.write(t.replace('%s', anim_name))
+    f.close()
 
 if __name__ == '__main__':
     generate_animation(sys.argv[1], sys.argv[2] == 'true', sys.argv[3:])
