@@ -8,6 +8,10 @@ This includes changes to make this work with Python3 on Debian Bullseye.
 
 This also generates a WebP image that you can serve when the browser accepts it, increasing the size gain.
 
+## Demo
+
+See [the demo from this repo](https://bohwaz.github.io/anim_encoder/demo_test.html) to see how it looks.
+
 ## Requirements
 
 `sudo apt install pngcrush python3-opencv python3-numpy python3-scipy python3-progressbar python3-imageio slop ffmpeg imagemagick webp`
